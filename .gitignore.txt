@@ -1,6 +1,0 @@
-API_Key.txt
-emp_data.py
-garbage_can.py
-.idea/
-.cache/
-__pycache__/
