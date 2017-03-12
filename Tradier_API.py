@@ -1,9 +1,10 @@
 import json
 import csv
 import requests
+import os
 
 def get_tradier_data(stockSymbol,
-                     infoType):  # Request: Market Quotes (https://sandbox.tradier.com/v1/markets/quotes?symbols=spy)
+                     infoType, startDate):  # Request: Market Quotes (https://sandbox.tradier.com/v1/markets/quotes?symbols=spy)
 
     #get API key from local text file
     with open("API_Key.txt", "r") as mykey:
@@ -24,7 +25,7 @@ def get_tradier_data(stockSymbol,
     # pull historical information
     elif (infoType == 'hist'):
         try:
-            stockData = requests.get('https://sandbox.tradier.com/v1/markets/history?symbol=' + stockSymbol,headers=headers)
+            stockData = requests.get('https://sandbox.tradier.com/v1/markets/history?symbol=' + stockSymbol + '&start=' + startDate,headers=headers)
         except ValueError:
             print ('there was a problem getting the stock information')
 
@@ -48,7 +49,7 @@ def convert_response_to_dict(stockData):  # converts request response to diction
 def send_to_csv(stock_dic, infoType, stockSymbol):  # write quote data to csv
 
     if (infoType == 'quote'):
-        with open('C:/Users/brucecurcio/Desktop/Investing/SPY_Data/' + stockSymbol + '_quote.csv', 'w',
+        with open(outputURL + stockSymbol + '_quote.csv', 'w',
                   newline='') as f:  # Just use 'w' mode in 3.x
             w = csv.DictWriter(f, stock_dic['quotes']['quote'].keys())
             w.writeheader()
@@ -56,7 +57,7 @@ def send_to_csv(stock_dic, infoType, stockSymbol):  # write quote data to csv
         print('csv created')
 
     elif (infoType == 'hist'):
-        with open('C:/Users/brucecurcio/Desktop/Investing/SPY_Data/' + stockSymbol + '_hist.csv', 'w',
+        with open(outputURL + stockSymbol + '_hist_raw.csv', 'w',
                   newline='') as f:  # Just use 'w' mode in 3.x
 
             #write column headers into csv
@@ -70,23 +71,51 @@ def send_to_csv(stock_dic, infoType, stockSymbol):  # write quote data to csv
                 w.writerow(stock_dic['history']['day'][current])
                 current += 1
 
-        print('csv created')
-
     else:
         print('there seems to be a problem, goodbye')
 
     return
 
+def reorderColumns(stockSymbol): # puts historical output into proper column order
+    with open(outputURL + stockSymbol + '_hist_raw.csv', 'r') as infile, \
+            open(outputURL + stockSymbol + '_hist.csv', 'w', newline='') as outfile:
+
+        # output dict needs a list for new column ordering
+        fieldnames = ['date', 'open', 'high', 'low', 'close', 'volume']
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+
+        # reorder the header first
+        writer.writeheader()
+
+        for row in csv.DictReader(infile):
+            writer.writerow(row) # writes the reordered rows to the new file
+
+    #delete the unformated csv file
+    os.remove(outputURL + stockSymbol + '_hist_raw.csv')
+
+    print('csv created')
+
+#global variables
+with open("OutputFileURL.txt", "r") as myUrl:
+    outputURL = myUrl.read()
+getStartDate = None
+
 #question the user for input
+
 getStock = input('please enter stock symbol you desire to get ')
 getType = input('please enter \'quote\' or \'hist\' for data type desired ')
+if (getType == 'hist'):
+    getStartDate = input ('please input your start date in the format YYYY-MM-DD ')
 
 if (getType == 'quote' or getType == 'hist'):
-    tradierResponse = get_tradier_data(getStock, getType)  # go to tradier to get data
+    tradierResponse = get_tradier_data(getStock, getType, getStartDate)  # go to tradier to get data
     tradierDict = convert_response_to_dict(tradierResponse) #prepare date for csv writing
     send_to_csv(tradierDict, getType, getStock) #write date into csv
+    if (getType == 'hist'):
+        reorderColumns(getStock)
 else:
     print('invalid input...goodbye')
 
-#to do: control the column order for the historical data and the columns returned for the quotes
-
+#clean up columns for quote data, also code in the ability to pull quotes for multiple stocks at once
+#i could use this as input into a spreadsheet that tracks my portfolio daily
+# i should put these data points into a database
