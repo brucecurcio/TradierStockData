@@ -22,7 +22,7 @@ def get_tradier_data(stockSymbol,
 
 
     # pull historical information
-    elif (infoType == 'history'):
+    elif (infoType == 'hist'):
         try:
             stockData = requests.get('https://sandbox.tradier.com/v1/markets/history?symbol=' + stockSymbol,headers=headers)
         except ValueError:
@@ -48,19 +48,28 @@ def convert_response_to_dict(stockData):  # converts request response to diction
 def send_to_csv(stock_dic, infoType, stockSymbol):  # write quote data to csv
 
     if (infoType == 'quote'):
-        with open('C:/Users/brucecurcio/Desktop/Investing/SPY_Data/' + stockSymbol + '.csv', 'w',
+        with open('C:/Users/brucecurcio/Desktop/Investing/SPY_Data/' + stockSymbol + '_quote.csv', 'w',
                   newline='') as f:  # Just use 'w' mode in 3.x
             w = csv.DictWriter(f, stock_dic['quotes']['quote'].keys())
             w.writeheader()
             w.writerow(stock_dic['quotes']['quote'])
         print('csv created')
 
-    elif (infoType == 'historical'):
-        with open('C:/Users/brucecurcio/Desktop/Investing/SPY_Data/SPY_Data.csv', 'w',
+    elif (infoType == 'hist'):
+        with open('C:/Users/brucecurcio/Desktop/Investing/SPY_Data/' + stockSymbol + '_hist.csv', 'w',
                   newline='') as f:  # Just use 'w' mode in 3.x
-            w = csv.DictWriter(f, stock_dic['history']['day'].keys())
+
+            #write column headers into csv
+            current = 0
+            w = csv.DictWriter(f, stock_dic['history']['day'][current])
             w.writeheader()
-            w.writerow(stock_dic['history']['day'])
+
+            #iterate through historical data and populate csv
+            while current < len(stock_dic['history']['day']):
+                w = csv.DictWriter(f, stock_dic['history']['day'][current])
+                w.writerow(stock_dic['history']['day'][current])
+                current += 1
+
         print('csv created')
 
     else:
@@ -70,18 +79,14 @@ def send_to_csv(stock_dic, infoType, stockSymbol):  # write quote data to csv
 
 #question the user for input
 getStock = input('please enter stock symbol you desire to get ')
-getType = input('please enter \'quote\' or \'historical\' for data type desired ')
+getType = input('please enter \'quote\' or \'hist\' for data type desired ')
 
-if (getType == 'quote' or getType == 'historical'):
+if (getType == 'quote' or getType == 'hist'):
     tradierResponse = get_tradier_data(getStock, getType)  # go to tradier to get data
     tradierDict = convert_response_to_dict(tradierResponse) #prepare date for csv writing
     send_to_csv(tradierDict, getType, getStock) #write date into csv
 else:
     print('invalid input...goodbye')
 
+#to do: control the column order for the historical data and the columns returned for the quotes
 
-
-
-# fieldname list to be used if resolve how to filter headers in python dictionary for quote pull
-# fieldnames = ['trade_date', 'last', 'open', 'change_percentage', 'ask', 'description', 'close', 'average_volume',
-#                  'low', 'change', 'week_52_high', 'symbol', 'volume', 'last_volume', 'prevclose', 'high', 'week_52_low']
